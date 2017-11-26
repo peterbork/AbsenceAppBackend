@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use function foo\func;
 use Illuminate\Http\Request;
 use App\Services\WebUntis;
@@ -56,10 +57,14 @@ class WebUntisController extends Controller {
 	}
 
 	public function GetStudents(  ) {
-		$ids = collect($this->webuntis->request('GET', "students"))->map(function($item){
+		$ids = collect($this->webuntis->request('GET', "students?active=true"))->map(function($item){
 			return $item->untis_id;
-		})->implode(',');
-		return $this->webuntis->request("GET", "students?untis_ids=$ids");
+		})->chunk(150);
+		$res = [];
+		foreach ($ids as $ids_chuck){
+			$res = array_merge($res, $this->webuntis->request("GET", "students?untis_ids=".$ids_chuck->implode(',')));
+		}
+		return $res;
 	}
 
 	public function GetUsers(  ) {
@@ -98,10 +103,10 @@ class WebUntisController extends Controller {
 		return $lessons;
 	}
 
-	public function GetWeeklyLessons($start = null, $end = null) {
-		// todo: change static dates to current week start and end date
-		$start = $start == null ? "2017-11-27" : $start;
-		$end = $end == null ?  "2017-12-01" : $end;
+	public function GetLessonsWeekly($start = null, $end = null) {
+		$start = $start == null ? Carbon::now()->startOfWeek()->format('Y-m-d') : $start;
+		$end = $end == null ?  Carbon::now()->endOfWeek()->format('Y-m-d') : $end;
+
 		$ids = collect($this->webuntis->request('GET', "groups/2353/lessons?start=$start&end=$end"))->map(function($item){
 			return $item->untis_id;
 		})->implode(',');
